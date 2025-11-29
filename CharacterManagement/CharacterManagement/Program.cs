@@ -1,4 +1,6 @@
-﻿namespace CharacterManagement
+﻿using System.Xml.Linq;
+
+namespace CharacterManagement
 {
     class Character
     {
@@ -31,21 +33,33 @@
     {
         static void CreateCharacter(List<Character> characters)
         {
-            /*Each character has a Name, Class, Level, HitPoints, AvailableAttributePoints, and a list of Skills. 
-             * The ToString() method is overridden to display the character’s details and their skills. Calculate 
-             * the character's starting level (1) and hit points (10 + AvailableAttributePoints/2, use integer division). 
-             * Add the character to the list of characters.
-             */
+            //Take user input for new character info
+            Console.Write("Enter name: ");
+            string name = Console.ReadLine();
+
+            Console.Write("Enter class: ");
+            string charClass = Console.ReadLine();
+
+            Console.Write("Enter total attribute points: ");
+            int ap = int.Parse(Console.ReadLine());
+
+            Character c = new Character 
+            { 
+                Name = name, 
+                Class = charClass,
+                Level = 1,
+                //hit points (10 + AvailableAttributePoints/2, use integer division)
+                HitPoints = 10 + ap / 2, 
+                AvailableAttributePoints = ap, 
+                Skills = new List<Skill>() 
+            };
+            //Adding the character to the list of characters.
+            characters.Add(c);
+
         }
         static void AssignSkill(List<Character> characters, List<Skill> skills)
         {
-            /*Each skill has a Name, Description, Attribute, and RequiredAttributePoints. The ToString method 
-             * is overridden to display the skill’s details. The user should be able to select a character by 
-             * name and assign a skill to that character. A character can have multiple skills, but each skill 
-             * can only be assigned once to a character. A skill can be assigned if the character's AvailableAttributePoints 
-             * meet the RequiredAttributePoints for that skill. Once a skill is assigned, deduct the RequiredAttributePoints 
-             * value from the caharacter’s AvailableAttributePoints.
-             */
+
         }
         static void LevelUp(List<Character> characters)
         {
@@ -57,9 +71,18 @@
         {
             //The user should be able to view the details of all created characters.
         }
-        static void UseMenu()
+        static int UseMenu()
         {
+            Console.WriteLine("=== Character Management ===");
+            Console.WriteLine("1. Create a character");
+            Console.WriteLine("2. Assign skills");
+            Console.WriteLine("3. Level up a character");
+            Console.WriteLine("4. Display all character sheets");
+            Console.WriteLine("5. Exit");
+            Console.Write("Enter your choice: ");
+            int choice = int.Parse(Console.ReadLine());
 
+            return choice;
         }
 
         static void Main(string[] args)
@@ -77,7 +100,25 @@
 
             while (running)
             {
-
+                int choice = UseMenu();
+                switch (choice)
+                {
+                    case 1:
+                        CreateCharacter(characters);
+                        break;
+                    case 2:
+                        AssignSkill(characters, skills);
+                        break;
+                    case 3:
+                        LevelUp(characters);
+                        break;
+                    case 4:
+                        DisplayCharSheet(characters);
+                        break;
+                    case 5:
+                        running = false;
+                        break;
+                }
             }
         }
     }
