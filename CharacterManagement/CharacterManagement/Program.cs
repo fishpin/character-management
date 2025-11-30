@@ -1,14 +1,14 @@
 ﻿using System;
-using System.Reflection.Emit;
-using System.Xml.Linq;
+using System.Collections.Generic;
 
 namespace CharacterManagement
 {
+    //Represents a single playable character
     class Character
     {
         public string Name { get; set; }
         public string Class { get; set; }
-        public int Level { get; set; }
+        public int Level { get; set; } = 1;
         public int HitPoints { get; set; }
         public int AvailableAttributePoints { get; set; }
         public List<Skill> Skills { get; set; } = new List<Skill>();
@@ -17,8 +17,9 @@ namespace CharacterManagement
         {
             return $"Character: {Name}, Class: {Class}, Level: {Level}, HP: {HitPoints}, Attribute Points: {AvailableAttributePoints}, Skills: {Skills}";
         }
-
     }
+
+    //Represents a learnable skill with cost and description
     class Skill
     {
         public string Name { get; set; }
@@ -31,212 +32,249 @@ namespace CharacterManagement
             return $"{Name} Attribute: {Attribute}, Cost: {RequiredAttributePoints} points, Description: {Description}";
         }
     }
+
     internal class Program
     {
+        //Helper: Safely reads an integer with validation loop
+        private static int SafeReadInt(string prompt)
+        {
+            while (true)
+            {
+                Console.Write(prompt);
+                if (int.TryParse(Console.ReadLine(), out int result))
+                {
+                    return result;
+                }
+                Console.WriteLine("Invalid input. Please enter a whole number.");
+            }
+        }
+
+        // Helper: Asks for character name until a valid response is entered
+        private static Character FindCharacter(List<Character> characters)
+        {
+            while (true)
+            {
+                Console.Write("Enter character name: ");
+                string input = Console.ReadLine()?.Trim();
+
+                if (string.IsNullOrWhiteSpace(input))
+                {
+                    Console.WriteLine("Character name cannot be empty. Please try again.");
+                    continue;
+                }
+
+                foreach (Character c in characters)
+                {
+                    if (c.Name.Equals(input, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return c;
+                    }
+                }
+
+                Console.WriteLine("Character not found, please try again.");
+            }
+        }
+
+        //Creates a new character with full input validation
         static void CreateCharacter(List<Character> characters)
         {
-            //Take user input for new character info
-            Console.Write("Enter name: ");
-            string name = Console.ReadLine();
-            Console.Write("Enter class: ");
-            string charClass = Console.ReadLine();
-            Console.Write("Enter total attribute points: ");
-            int ap = int.Parse(Console.ReadLine());
+            //Name validation: cannot be empty or just spaces
+            string name;
+            while (true)
+            {
+                Console.Write("Enter name: ");
+                name = Console.ReadLine()?.Trim();
+                if (!string.IsNullOrWhiteSpace(name)) break;
+                Console.WriteLine("Name cannot be empty. Please try again.");
+            }
 
-            Character c = new Character 
-            { 
-                Name = name, 
+            //Class validation: same rules as name
+            string charClass;
+            while (true)
+            {
+                Console.Write("Enter class: ");
+                charClass = Console.ReadLine()?.Trim();
+                if (!string.IsNullOrWhiteSpace(charClass)) break;
+                Console.WriteLine("Class cannot be empty. Please try again.");
+            }
+
+            //Prevent erroneous input
+            int ap = SafeReadInt("Enter total attribute points: ");
+            while (ap < 0)
+            {
+                Console.WriteLine("Attribute points cannot be negative.");
+                ap = SafeReadInt("Enter total attribute points: ");
+            }
+
+            //Create character with calculated hit points (10 + attribute points/2)
+            Character c = new Character
+            {
+                Name = name,
                 Class = charClass,
                 Level = 1,
-                //hit points (10 + AvailableAttributePoints/2, use integer division)
-                HitPoints = 10 + ap / 2, 
-                AvailableAttributePoints = ap, 
-                Skills = new List<Skill>() 
+                HitPoints = 10 + ap / 2,
+                AvailableAttributePoints = ap,
+                Skills = new List<Skill>()
             };
-            //Adding the character to the list of characters.
-            characters.Add(c);
 
+            characters.Add(c);
+            Console.WriteLine($"\nCharacter '{name}' created successfully!\n");
         }
+
+        //Assigns a skill to a character if they have enough points and don't already have it
         static void AssignSkill(List<Character> characters, List<Skill> skills)
         {
-            //Select a character by name
-            Character selectedChar = null;
-
-            while (selectedChar == null)
+            //Guard clause: Don't proceed if no characters exist
+            if (characters.Count == 0)
             {
-                Console.Write("Enter character name: ");
-                string charName = Console.ReadLine();
-
-                foreach (Character c in characters)
-                {
-                    if (c.Name.ToLower() == charName.ToLower())
-                    {
-                        selectedChar = c;
-                        break;
-                    }
-                }
-
-                if (selectedChar == null)
-                {
-                    Console.WriteLine("Character not found, pleases try again.");
-                }
+                Console.WriteLine("No characters have been created yet. Please create a character first!\n");
+                return;
             }
-            Console.WriteLine("");
-            Console.WriteLine($"Total attribute points available for this character: {selectedChar.AvailableAttributePoints}");
+
+            Character selectedChar = FindCharacter(characters);
+
+            Console.WriteLine($"\nTotal attribute points available for this character: {selectedChar.AvailableAttributePoints}");
             Console.WriteLine("Available Skills: ");
 
-            //Select skill to assign from the list
-            int choice = 0;
-            while (choice < 1 || choice > skills.Count)
+            //Display numbered skill list and get valid selection
+            int choice;
+            while (true)
             {
-                int i = 1;
-                foreach (Skill s in skills)
+                for (int i = 0; i < skills.Count; i++)
                 {
-                    Console.WriteLine($"{i}. {s.Name} - {s.Description} - {s.Attribute} - Point Requirement:{s.RequiredAttributePoints}");
-                    i++;
+                    Console.WriteLine($"{i + 1}. {skills[i].Name} - {skills[i].Description} - {skills[i].Attribute} - Point Requirement:{skills[i].RequiredAttributePoints}");
                 }
-                Console.Write("Select a skill to assign: ");
-                choice = int.Parse(Console.ReadLine());
 
-                if (choice < 1 || choice > skills.Count)
-                {
-                    Console.WriteLine("Please enter a number from the list.");
-                }
+                choice = SafeReadInt("Select a skill to assign: ");
+
+                if (choice >= 1 && choice <= skills.Count)
+                    break;
+
+                Console.WriteLine("Please enter a number from the list.");
             }
 
-            //Assign skill to character if points available and not already owned
             Skill selectedSkill = skills[choice - 1];
-            if (selectedChar.AvailableAttributePoints < selectedSkill.RequiredAttributePoints)
-            {
-                Console.WriteLine("Not enough attribute points are available!");
-                return;
-            }
+
+            //Check if character already has the skill
             if (selectedChar.Skills.Contains(selectedSkill))
             {
-                Console.WriteLine($"{selectedChar.Name} already has the {selectedSkill.Name} skill.");
+                Console.WriteLine($"{selectedChar.Name} already has the {selectedSkill.Name} skill.\n");
                 return;
             }
-            else
+
+            //Check if character has enough attribute points
+            if (selectedChar.AvailableAttributePoints < selectedSkill.RequiredAttributePoints)
             {
-                selectedChar.AvailableAttributePoints -= selectedSkill.RequiredAttributePoints;
-                selectedChar.Skills.Add(selectedSkill);
+                Console.WriteLine("Not enough attribute points are available!\n");
+                return;
             }
 
+            //Assign skill and deduct cost
+            selectedChar.Skills.Add(selectedSkill);
+            selectedChar.AvailableAttributePoints -= selectedSkill.RequiredAttributePoints;
+            Console.WriteLine($"\nSkill: {selectedSkill.Name} added to {selectedChar.Name}\n");
         }
+
+        //Increases character level
         static void LevelUp(List<Character> characters)
         {
-            //Select character by name
-            Character selectedChar = null;
-            while (selectedChar == null)
+            if (characters.Count == 0)
             {
-                Console.Write("Enter character name: ");
-                string charName = Console.ReadLine();
-
-                foreach (Character c in characters)
-                {
-                    if (c.Name.ToLower() == charName.ToLower())
-                    {
-                        selectedChar = c;
-                        break;
-                    }
-                }
-
-                if (selectedChar == null)
-                {
-                    Console.WriteLine("Character not found, pleases try again.");
-                }
+                Console.WriteLine("No characters have been created yet. Please create one first!\n");
+                return;
             }
-            Console.WriteLine($"{selectedChar.Name} is now a Level:{selectedChar.Level + 1} character.");
 
-            //On level up: level increases by 1, hit points increase by 5, gain 10 attribute points
+            Character selectedChar = FindCharacter(characters);
+
+            //Apply level up bonuses
             selectedChar.Level += 1;
             selectedChar.HitPoints += 5;
             selectedChar.AvailableAttributePoints += 10;
 
+            Console.WriteLine($"{selectedChar.Name} is now a Level:{selectedChar.Level} character.\n");
         }
+
+        //Displays all characters and their current stats/skills
         static void DisplayCharSheet(List<Character> characters)
         {
-            //Display all created characters
             Console.WriteLine("All Characters in the character sheet.......................");
 
-            foreach (Character c in characters)
-            {
-                Console.WriteLine("");
-                Console.WriteLine($"Name: {c.Name}, Class: {c.Class}, Level: {c.Level}, " +
-                    $"HP: {c.HitPoints}, Available Attribute Points: {c.AvailableAttributePoints}");
-                Console.WriteLine("Skills:");
-
-                if (c.Skills == null || c.Skills.Count == 0)
-                {
-                    Console.WriteLine("There are no skills assigned yet...!");
-                }
-                else
-                {
-                    foreach (Skill s in c.Skills)
-                    {
-                        Console.WriteLine($"{s.Name} - {s.Description} - {s.Attribute} - " +
-                            $"Points Requirement: {s.RequiredAttributePoints}");
-                    }
-                }
-                    Console.WriteLine("");
-            }
             if (characters.Count == 0)
             {
                 Console.WriteLine("\nNo Characters have been created...\n");
             }
-
-            Console.WriteLine("End.........................................................");
-
-
+            else
+            {
+                foreach (Character c in characters)
+                {
+                    Console.WriteLine("");
+                    Console.WriteLine($"Name: {c.Name}, Class: {c.Class}, Level: {c.Level}, " +
+                        $"HP: {c.HitPoints}, Available Attribute Points: {c.AvailableAttributePoints}");
+                    Console.WriteLine("Skills:");
+                    if (c.Skills.Count == 0)
+                    {
+                        Console.WriteLine("There are no skills assigned yet...!");
+                    }
+                    else
+                    {
+                        foreach (Skill s in c.Skills)
+                        {
+                            Console.WriteLine($"{s.Name} - {s.Description} - {s.Attribute} - Points Requirement: {s.RequiredAttributePoints}");
+                        }
+                    }
+                    Console.WriteLine("");
+                }
+            }
+            Console.WriteLine("End.........................................................\n");
         }
+
+        //Displays main menu and returns valid user choice
         static int UseMenu()
         {
-            //Display numbered menu and take user input
-            Console.WriteLine("");
-            Console.WriteLine("1. Create a character");
-            Console.WriteLine("2. Assign skills");
-            Console.WriteLine("3. Level up a character");
-            Console.WriteLine("4. Display all character sheets");
-            Console.WriteLine("5. Exit");
-            Console.Write("Enter your choice: ");
-            int choice = int.Parse(Console.ReadLine());
+            while (true)
+            {
+                Console.WriteLine("");
+                Console.WriteLine("Main Menu:");
+                Console.WriteLine("1. Create a character");
+                Console.WriteLine("2. Assign skills");
+                Console.WriteLine("3. Level up a character");
+                Console.WriteLine("4. Display all character sheets");
+                Console.WriteLine("5. Exit");
 
-            return choice;
+                Console.Write("Enter your choice: ");
+                if (int.TryParse(Console.ReadLine(), out int choice) && choice >= 1 && choice <= 5)
+                {
+                    return choice;
+                }
+                Console.WriteLine("Please enter a number between 1 and 5.");
+            }
         }
 
         static void Main(string[] args)
         {
             List<Character> characters = new List<Character>();
             List<Skill> skills = new List<Skill>
-
             {
-                new Skill { Name = "Strike", Description = "A powerful strike.", Attribute = "Strength", RequiredAttributePoints=10 },
-                new Skill { Name = "Dodge", Description = "Avoid an attack.", Attribute = "Dexterity", RequiredAttributePoints=15 },
-                new Skill { Name = "Spellcast", Description = "Cast a spell.", Attribute = "Intelligence", RequiredAttributePoints=20 }
+                new Skill { Name = "Strike", Description = "A powerful strike.", Attribute = "Strength", RequiredAttributePoints = 10 },
+                new Skill { Name = "Dodge", Description = "Avoid an attack.", Attribute = "Dexterity", RequiredAttributePoints = 15 },
+                new Skill { Name = "Spellcast", Description = "Cast a spell.", Attribute = "Intelligence", RequiredAttributePoints = 20 }
             };
 
             Console.WriteLine("=== Character Management ===");
-
-            //running = false when Exit is selected to end game
             bool running = true;
+
             while (running)
             {
                 int choice = UseMenu();
+
                 switch (choice)
                 {
-                    case 1:
-                        CreateCharacter(characters);
-                        break;
-                    case 2:
-                        AssignSkill(characters, skills);
-                        break;
-                    case 3:
-                        LevelUp(characters);
-                        break;
-                    case 4:
-                        DisplayCharSheet(characters);
-                        break;
+                    case 1: CreateCharacter(characters); break;
+                    case 2: AssignSkill(characters, skills); break;
+                    case 3: LevelUp(characters); break;
+                    case 4: DisplayCharSheet(characters); break;
                     case 5:
+                        Console.WriteLine("Thank you for using Character Management. Goodbye!");
                         running = false;
                         break;
                 }
